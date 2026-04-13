@@ -4,12 +4,11 @@ import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import {
   HOME_BALANCE,
   HOME_SUBSCRIPTIONS,
-  HOME_USER,
   UPCOMING_SUBSCRIPTIONS,
 } from "@/constants/data";
 import { icons } from "@/constants/icons";
-import images from "@/constants/images";
 import { formatCurrency } from "@/libs/utils";
+import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -22,6 +21,17 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+  const { isLoaded, user } = useUser();
+
+  if (!isLoaded || !user) {
+    return null;
+  }
+
+  const displayName =
+    user.firstName ||
+    user.primaryEmailAddress?.emailAddress ||
+    user.username ||
+    "User";
 
   return (
     <SafeAreaView className="flex-1 p-5 bg-background">
@@ -33,8 +43,11 @@ export default function App() {
             {/*Profile Header */}
             <View className="home-header">
               <View className="home-user">
-                <Image source={images.avatar} className="home-avatar" />
-                <Text className="home-user-name">{HOME_USER.name}</Text>
+                <Image
+                  source={{ uri: user.imageUrl }}
+                  className="home-avatar"
+                />
+                <Text className="home-user-name">{displayName}</Text>
               </View>
               <Image source={icons.add} className="home-add-icon" />
             </View>

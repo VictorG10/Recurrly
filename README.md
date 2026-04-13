@@ -10,7 +10,13 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Copy local environment settings
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Start the app
 
    ```bash
    npx expo start
@@ -24,6 +30,16 @@ In the output, you'll find options to open the app in a
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Environment variables
+
+This project reads Clerk configuration from environment variables. Create a local `.env` file from `.env.example` and do not commit it.
+
+Required environment variable:
+
+- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+
+For CI/deployment, set the same secret in your environment or platform configuration rather than storing it in the repository.
 
 ## Get a fresh project
 
