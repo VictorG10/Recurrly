@@ -1,7 +1,7 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -27,7 +27,13 @@ const Settings = () => {
   const { signOut } = useAuth();
   const router = useRouter();
 
-  if (!isLoaded || !user) {
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.replace("/(auth)/sign-in");
+    }
+  }, [isLoaded, user, router]);
+
+  if (!isLoaded) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 items-center justify-center">
@@ -35,6 +41,10 @@ const Settings = () => {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   const fullName =

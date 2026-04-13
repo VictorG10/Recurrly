@@ -27,6 +27,12 @@ export default function App() {
     return null;
   }
 
+  const displayName =
+    user.firstName ||
+    user.primaryEmailAddress?.emailAddress ||
+    user.username ||
+    "User";
+
   return (
     <SafeAreaView className="flex-1 p-5 bg-background">
       {/* All Subscription */}
@@ -41,7 +47,7 @@ export default function App() {
                   source={{ uri: user.imageUrl }}
                   className="home-avatar"
                 />
-                <Text className="home-user-name">{user.firstName}</Text>
+                <Text className="home-user-name">{displayName}</Text>
               </View>
               <Image source={icons.add} className="home-add-icon" />
             </View>

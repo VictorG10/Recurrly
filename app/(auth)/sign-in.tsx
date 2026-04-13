@@ -5,6 +5,7 @@ import { styled } from "nativewind";
 import React from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -23,6 +24,7 @@ const SignIn = () => {
   const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
   const [globalError, setGlobalError] = React.useState<string | null>(null);
+  const [pendingTask, setPendingTask] = React.useState<any | null>(null);
 
   const resolveFieldMessage = (field?: unknown) => {
     if (!field) return undefined;
@@ -42,6 +44,18 @@ const SignIn = () => {
   const readyToSubmit = emailIsValid && password.length > 0;
   const requiresTrust = signIn.status === "needs_client_trust";
 
+  const navigateToDecoratedUrl = async (url: string | Href) => {
+    if (typeof url === "string" && url.startsWith("http")) {
+      if (typeof window !== "undefined") {
+        window.location.href = url;
+      } else {
+        await Linking.openURL(url);
+      }
+    } else {
+      router.replace(url as Href);
+    }
+  };
+
   const handleSubmit = async () => {
     setGlobalError(null);
 
@@ -57,32 +71,35 @@ const SignIn = () => {
 
     if (signIn.status === "complete") {
       await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
+        navigate: async ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session.currentTask);
+            setPendingTask(session.currentTask);
             return;
           }
 
           const url = decorateUrl("/");
-          if (typeof url === "string" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace(url as Href);
-          }
+          await navigateToDecoratedUrl(url);
         },
       });
       return;
     }
 
-    if (requiresTrust) {
+    if (signIn.status === "needs_client_trust") {
       const factor = signIn.supportedSecondFactors.find(
         (factor) => factor.strategy === "email_code",
       );
 
       if (factor) {
         await signIn.mfa.sendEmailCode();
+      } else {
+        setGlobalError(
+          "Unable to send a verification code. Please contact support.",
+        );
       }
+      return;
     }
+
+    setGlobalError("Unable to sign in. Please verify your credentials.");
   };
 
   const handleVerify = async () => {
@@ -97,18 +114,14 @@ const SignIn = () => {
 
     if (signIn.status === "complete") {
       await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
+        navigate: async ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session.currentTask);
+            setPendingTask(session.currentTask);
             return;
           }
 
           const url = decorateUrl("/");
-          if (typeof url === "string" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace(url as Href);
-          }
+          await navigateToDecoratedUrl(url);
         },
       });
     } else {
@@ -141,7 +154,19 @@ const SignIn = () => {
           </View>
 
           <View className="auth-card">
-            {requiresTrust ? (
+            {pendingTask ? (
+              <View className="auth-form">
+                <Text className="auth-title">Action required</Text>
+                <Text className="auth-subtitle">
+                  We need a bit more information before signing you in.
+                </Text>
+                <Text className="auth-helper">
+                  {pendingTask?.name ||
+                    pendingTask?.type ||
+                    "Please follow the required task to continue."}
+                </Text>
+              </View>
+            ) : requiresTrust ? (
               <View className="auth-form">
                 <View className="auth-field">
                   <Text className="auth-label">Verification code</Text>

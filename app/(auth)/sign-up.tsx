@@ -5,6 +5,7 @@ import { styled } from "nativewind";
 import React from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -24,6 +25,8 @@ const SignUp = () => {
   const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
   const [globalError, setGlobalError] = React.useState<string | null>(null);
+  const [pendingTask, setPendingTask] = React.useState<any | null>(null);
+  const [isResending, setIsResending] = React.useState(false);
 
   const resolveFieldMessage = (field?: unknown) => {
     if (!field) return undefined;
@@ -46,6 +49,18 @@ const SignUp = () => {
     signUp.unverifiedFields.includes("email_address") &&
     signUp.missingFields.length === 0;
 
+  const navigateToDecoratedUrl = async (url: string | Href) => {
+    if (typeof url === "string" && url.startsWith("http")) {
+      if (typeof window !== "undefined") {
+        window.location.href = url;
+      } else {
+        await Linking.openURL(url);
+      }
+    } else {
+      router.replace(url as Href);
+    }
+  };
+
   const handleSubmit = async () => {
     setGlobalError(null);
 
@@ -64,24 +79,33 @@ const SignUp = () => {
       signUp.unverifiedFields.includes("email_address") &&
       signUp.missingFields.length === 0
     ) {
-      await signUp.verifications.sendEmailCode();
+      try {
+        const result = await signUp.verifications.sendEmailCode();
+        if (result && "error" in result && result.error) {
+          setGlobalError(
+            result.error.message ?? "Failed to send verification email.",
+          );
+        }
+      } catch (sendError) {
+        setGlobalError(
+          sendError instanceof Error
+            ? sendError.message
+            : "Failed to send verification email.",
+        );
+      }
       return;
     }
 
     if (signUp.status === "complete") {
       await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
+        navigate: async ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session.currentTask);
+            setPendingTask(session.currentTask);
             return;
           }
 
           const url = decorateUrl("/");
-          if (typeof url === "string" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace(url as Href);
-          }
+          await navigateToDecoratedUrl(url);
         },
       });
     }
@@ -99,18 +123,14 @@ const SignUp = () => {
 
     if (signUp.status === "complete") {
       await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
+        navigate: async ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session.currentTask);
+            setPendingTask(session.currentTask);
             return;
           }
 
           const url = decorateUrl("/");
-          if (typeof url === "string" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace(url as Href);
-          }
+          await navigateToDecoratedUrl(url);
         },
       });
     } else {
@@ -143,7 +163,20 @@ const SignUp = () => {
           </View>
 
           <View className="auth-card">
-            {verificationPending ? (
+            {pendingTask ? (
+              <View className="auth-form">
+                <Text className="auth-title">Action required</Text>
+                <Text className="auth-subtitle">
+                  A pending task must be completed before account creation
+                  finishes.
+                </Text>
+                <Text className="auth-helper">
+                  {pendingTask?.name ||
+                    pendingTask?.type ||
+                    "Please follow the instructions for the pending task."}
+                </Text>
+              </View>
+            ) : verificationPending ? (
               <View className="auth-form">
                 <View className="auth-field">
                   <Text className="auth-label">Verification code</Text>
@@ -176,11 +209,35 @@ const SignUp = () => {
                 </Pressable>
 
                 <Pressable
-                  className="auth-secondary-button"
-                  onPress={() => signUp.verifications.sendEmailCode()}
+                  className={clsx(
+                    "auth-secondary-button",
+                    isResending && "auth-button-disabled",
+                  )}
+                  onPress={async () => {
+                    setGlobalError(null);
+                    setIsResending(true);
+                    try {
+                      const result = await signUp.verifications.sendEmailCode();
+                      if (result && "error" in result && result.error) {
+                        setGlobalError(
+                          result.error.message ??
+                            "Failed to resend verification code.",
+                        );
+                      }
+                    } catch (resendError) {
+                      setGlobalError(
+                        resendError instanceof Error
+                          ? resendError.message
+                          : "Failed to resend verification code.",
+                      );
+                    } finally {
+                      setIsResending(false);
+                    }
+                  }}
+                  disabled={fetchStatus === "fetching" || isResending}
                 >
                   <Text className="auth-secondary-button-text">
-                    Resend code
+                    {isResending ? "Resending…" : "Resend code"}
                   </Text>
                 </Pressable>
               </View>

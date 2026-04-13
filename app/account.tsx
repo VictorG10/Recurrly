@@ -1,6 +1,7 @@
 import { useUser } from "@clerk/expo";
+import { useRouter } from "expo-router";
 import { styled } from "nativewind";
-import React from "react";
+import React, { useEffect } from "react";
 import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
@@ -8,8 +9,15 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const Account = () => {
   const { isLoaded, user } = useUser();
+  const router = useRouter();
 
-  if (!isLoaded || !user) {
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.replace("/(auth)/sign-in");
+    }
+  }, [isLoaded, user, router]);
+
+  if (!isLoaded) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 items-center justify-center">
@@ -19,10 +27,15 @@ const Account = () => {
     );
   }
 
+  if (!user) {
+    return null;
+  }
+
   const fullName =
     user.fullName || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  const displayName = fullName || "Not provided";
   const email = user.primaryEmailAddress?.emailAddress ?? "Unknown email";
-  const username = user.username ? `@${user.username}` : "No username";
+  const username = user.username ? `@${user.username}` : "Not provided";
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -42,7 +55,7 @@ const Account = () => {
             />
             <View className="flex-1">
               <Text className="text-2xl font-sans-bold text-primary">
-                {fullName || "Your Name"}
+                {displayName}
               </Text>
               <Text className="mt-2 text-base font-sans-medium text-muted-foreground">
                 {email}
